@@ -1,0 +1,164 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Field dashboard";
+    var latest = Model.Readings.FirstOrDefault();
+    var avgMoisture = Model.Readings.Any() ? Model.Readings.Average(r => r.SoilMoisture) : 0;
+    var chartData = Model.Readings.OrderBy(r => r.ReadingTime).ToList();
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h1 class="h3 mb-0">Field dashboard</h1>
+    <form method="get" class="d-flex gap-2">
+        <select name="fieldId" class="form-select" onchange="this.form.submit()">
+            @foreach (var f in Model.Fields)
+            {
+                <option value="@f" selected="@(f == Model.FieldId)">@f</option>
+            }
+        </select>
+    </form>
+</div>
+
+@if (Model.Message != null) { <div class="alert alert-success">@Model.Message</div> }
+@if (Model.Error != null) { <div class="alert alert-danger">@Model.Error</div> }
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body">
+        <div class="text-muted small">Latest soil moisture</div>
+        <div class="value">@(latest != null ? latest.SoilMoisture.ToString("F1") + "%" : "-")</div>
+    </div></div></div>
+    <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body">
+        <div class="text-muted small">Average moisture (last @Model.Readings.Count)</div>
+        <div class="value">@(Model.Readings.Any() ? avgMoisture.ToString("F1") + "%" : "-")</div>
+    </div></div></div>
+    <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body">
+        <div class="text-muted small">Latest temperature</div>
+        <div class="value">@(latest != null ? latest.Temperature.ToString("F1") + " °C" : "-")</div>
+    </div></div></div>
+    <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body">
+        <div class="text-muted small">Telemetry function response</div>
+        <div class="value">@Model.TelemetryFetchMs ms</div>
+    </div></div></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card stat-card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h2 class="h6 mb-0">Soil moisture trend</h2>
+                    @if (User.IsInRole("Admin") || User.IsInRole("Agronomist"))
+                    {
+                        <form asp-action="SimulateReadings" method="post">
+                            <input type="hidden" name="fieldId" value="@Model.FieldId" />
+                            <button class="btn btn-sm btn-outline-success">Simulate sensor burst</button>
+                        </form>
+                    }
+                </div>
+                @if (chartData.Any())
+                {
+                    <canvas id="moistureChart" height="110"></canvas>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">No telemetry yet for @Model.FieldId. Use "Simulate sensor burst" to generate readings.</p>
+                }
+            </div>
+        </div>
+
+        <div class="card stat-card">
+            <div class="card-body">
+                <h2 class="h6">Latest readings (Azure Table Storage via HTTP GET function)</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead><tr><th>Time (UTC)</th><th>Sensor</th><th>Moisture %</th><th>Temp °C</th><th>Humidity %</th><th>pH</th></tr></thead>
+                        <tbody>
+                        @foreach (var r in Model.Readings.Take(15))
+                        {
+                            <tr class="@(r.SoilMoisture < 20 ? "table-warning" : "")">
+                                <td>@r.ReadingTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@r.DeviceId</td>
+                                <td>@r.SoilMoisture.ToString("F1")</td>
+                                <td>@r.Temperature.ToString("F1")</td>
+                                <td>@r.Humidity.ToString("F1")</td>
+                                <td>@r.Ph.ToString("F2")</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card stat-card mb-3">
+            <div class="card-body">
+                <h2 class="h6">Irrigation devices (Azure SQL registry)</h2>
+                @foreach (var d in Model.Devices)
+                {
+                    <div class="border rounded p-2 mb-2">
+                        <div class="d-flex justify-content-between">
+                            <strong>@d.DeviceName</strong>
+                            <span class="badge status-@d.EffectiveStatus">@d.EffectiveStatus</span>
+                        </div>
+                        <div class="small text-muted">
+                            @d.DeviceId
+                            @if (d.EffectiveStatus == "Irrigating" && d.IrrigationUntil.HasValue)
+                            {
+                                <span> &middot; until @d.IrrigationUntil.Value.ToString("HH:mm") UTC</span>
+                            }
+                        </div>
+                        <form asp-action="TriggerIrrigation" method="post" class="d-flex gap-2 mt-2">
+                            <input type="hidden" name="fieldId" value="@Model.FieldId" />
+                            <input type="hidden" name="deviceId" value="@d.DeviceId" />
+                            <input type="number" name="durationMinutes" value="15" min="1" max="240" class="form-control form-control-sm" style="max-width:90px" />
+                            <button class="btn btn-sm btn-primary">Trigger Irrigation</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card stat-card">
+            <div class="card-body">
+                <h2 class="h6">Recent irrigation commands</h2>
+                @if (!Model.RecentIrrigation.Any())
+                {
+                    <p class="text-muted small mb-0">None processed yet.</p>
+                }
+                @foreach (var l in Model.RecentIrrigation)
+                {
+                    <div class="small border-bottom py-1">
+                        <strong>@l.DeviceId</strong> &middot; @l.DurationMinutes min &middot; @l.RequestedBy<br />
+                        <span class="text-muted">@l.Reason</span><br />
+                        <span class="text-muted">processed @l.ProcessedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @if (chartData.Any())
+    {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <script>
+            new Chart(document.getElementById('moistureChart'), {
+                type: 'line',
+                data: {
+                    labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chartData.Select(r => r.ReadingTime.ToString("HH:mm:ss")))),
+                    datasets: [{
+                        label: 'Soil moisture %',
+                        data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chartData.Select(r => r.SoilMoisture))),
+                        borderColor: '#2f6b3a',
+                        backgroundColor: 'rgba(47,107,58,0.12)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 60 } } }
+            });
+        </script>
+    }
+}

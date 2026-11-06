@@ -1,0 +1,29 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Log in";
+}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card stat-card">
+            <div class="card-body p-4">
+                <h1 class="h4 mb-3">Log in to AgriStream</h1>
+                <form asp-action="Login" method="post">
+                    <input type="hidden" asp-for="ReturnUrl" />
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+                    <div class="mb-3">
+                        <label asp-for="Username" class="form-label"></label>
+                        <input asp-for="Username" class="form-control" autocomplete="username" />
+                        <span asp-validation-for="Username" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Password" class="form-label"></label>
+                        <input asp-for="Password" class="form-control" autocomplete="current-password" />
+                        <span asp-validation-for="Password" class="text-danger small"></span>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Log in</button>
+                </form>
+                <p class="text-muted small mt-3 mb-0">Demo accounts: <code>admin</code>, <code>farmer</code>, <code>agronomist</code></p>
+            </div>
+        </div>
+    </div>
+</div>

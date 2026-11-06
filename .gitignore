@@ -1,0 +1,10 @@
+bin/
+obj/
+publish/
+*.zip
+.vs/
+*.user
+appsettings.Development.json
+local.settings.json
+results_per_minute.csv
+instances.csv

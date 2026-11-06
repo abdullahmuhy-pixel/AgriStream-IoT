@@ -1,0 +1,32 @@
+@model CreateUserViewModel
+@{
+    ViewData["Title"] = "Add user";
+}
+<h1 class="h3 mb-3">Add user</h1>
+<div class="card stat-card col-md-6">
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+            <div class="mb-3">
+                <label asp-for="Username" class="form-label"></label>
+                <input asp-for="Username" class="form-control" />
+                <span asp-validation-for="Username" class="text-danger small"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label"></label>
+                <input asp-for="Password" class="form-control" />
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="RoleId" class="form-label"></label>
+                <select asp-for="RoleId" class="form-select"
+                        asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.Roles, "RoleId", "RoleName"))">
+                    <option value="">Choose a role</option>
+                </select>
+                <span asp-validation-for="RoleId" class="text-danger small"></span>
+            </div>
+            <button type="submit" class="btn btn-success">Create user</button>
+            <a asp-action="Users" class="btn btn-link">Cancel</a>
+        </form>
+    </div>
+</div>

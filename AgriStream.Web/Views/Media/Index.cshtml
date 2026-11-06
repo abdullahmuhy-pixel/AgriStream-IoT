@@ -1,0 +1,72 @@
+@model MediaViewModel
+@{
+    ViewData["Title"] = "Drone imagery";
+}
+<h1 class="h3 mb-3">Drone imagery</h1>
+
+@if (Model.Message != null) { <div class="alert alert-success">@Model.Message</div> }
+@if (Model.Error != null) { <div class="alert alert-danger">@Model.Error</div> }
+
+<div class="card stat-card mb-3">
+    <div class="card-body">
+        <h2 class="h6">Upload an aerial image to Azure Blob Storage</h2>
+        <form asp-action="Upload" method="post" enctype="multipart/form-data" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small">Field</label>
+                <select name="fieldId" class="form-select">
+                    @foreach (var f in Model.Fields) { <option value="@f">@f</option> }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small">Image (JPG, PNG, TIFF, WEBP, max 25 MB)</label>
+                <input type="file" name="file" accept="image/*" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-success w-100">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h2 class="h6">Container <code>drone-images</code> (@Model.Blobs.Count shown)</h2>
+                <div class="row g-2">
+                    @foreach (var b in Model.Blobs)
+                    {
+                        <div class="col-6 col-md-4">
+                            <img class="thumb" src="@Url.Action("Image", new { name = b.Name })" alt="@b.Name" loading="lazy" />
+                            <div class="small text-truncate" title="@b.Name">@b.Name</div>
+                            <div class="small text-muted">@((b.Properties.ContentLength ?? 0) / 1024) KB</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h2 class="h6">Processing audit (Table <code>ImageAudit</code>, written by the Blob-trigger function)</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead><tr><th>Processed (UTC)</th><th>Field</th><th>Status</th><th>Size</th></tr></thead>
+                        <tbody>
+                        @foreach (var a in Model.Audit)
+                        {
+                            <tr title="@a.BlobName - @a.Notes">
+                                <td>@a.ProcessedAt.ToString("MM-dd HH:mm:ss")</td>
+                                <td>@a.PartitionKey</td>
+                                <td><span class="badge @(a.Status == "Validated" ? "bg-success" : "bg-danger")">@a.Status</span></td>
+                                <td>@(a.SizeBytes / 1024) KB</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

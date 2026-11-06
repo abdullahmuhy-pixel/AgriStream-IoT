@@ -1,0 +1,38 @@
+@{
+    ViewData["Title"] = "Home";
+}
+<div class="hero mb-4">
+    <h1 class="h2">AgriStream IoT farm management</h1>
+    <p class="lead mb-3">Real-time soil telemetry, drone imagery and irrigation control for large-scale commercial farms.</p>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <a class="btn btn-light" asp-controller="Dashboard" asp-action="Index">Open field dashboard</a>
+    }
+    else
+    {
+        <a class="btn btn-light" asp-controller="Account" asp-action="Login">Log in</a>
+    }
+</div>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card stat-card h-100"><div class="card-body">
+            <h2 class="h6">Telemetry</h2>
+            <p class="mb-0 text-muted">Sensor readings land in Azure Table Storage and are served to the dashboard by an HTTP-triggered function.</p>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card h-100"><div class="card-body">
+            <h2 class="h6">Drone imagery</h2>
+            <p class="mb-0 text-muted">Images go to Azure Blob Storage; a blob-triggered function audits every upload.</p>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card h-100"><div class="card-body">
+            <h2 class="h6">Irrigation</h2>
+            <p class="mb-0 text-muted">Commands are queued in Azure Queue Storage and applied to the device registry in Azure SQL.</p>
+        </div></div>
+    </div>
+</div>
+
+<p class="text-muted small mt-4">Served by App Service instance <code>@ViewBag.Instance</code></p>
